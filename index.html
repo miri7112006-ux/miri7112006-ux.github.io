@@ -6,11 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="🛒 קניות">
+<meta name="color-scheme" content="light">
 <title>רשימת קניות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;800;900&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Heebo', sans-serif; direction: rtl; min-height: 100vh; background: #f5f4f1; padding-bottom: 60px; }
+:root { color-scheme: light only; }
+body { font-family: 'Heebo', sans-serif; direction: rtl; min-height: 100vh; background: #f5f4f1; padding-bottom: 60px; color: #1c1c1c; }
 button { font-family: 'Heebo', sans-serif; cursor: pointer; }
 input, select { font-family: 'Heebo', sans-serif; }
 #app { max-width: 540px; margin: 0 auto; }
@@ -1383,6 +1385,10 @@ function updateBadge() {
     if (urgentCount > 0) navigator.setAppBadge(urgentCount).catch(()=>{});
     else navigator.clearAppBadge().catch(()=>{});
   }
+  // Also update via service worker
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'SET_BADGE', count: urgentCount });
+  }
   // Update banner
   const banner = document.getElementById('urgent-banner');
   const bannerText = document.getElementById('urgent-banner-text');
@@ -1423,6 +1429,11 @@ window.toggleUrgentFilter = function() {
 };
 
 init().then(checkSharedList);
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
