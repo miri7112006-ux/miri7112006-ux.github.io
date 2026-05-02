@@ -686,6 +686,8 @@ function renderBuildItem(m) {
 function toggleBuildItem(name) {
   if (!buildSelected[name]) buildSelected[name] = { checked: false, qty: '1' };
   buildSelected[name].checked = !buildSelected[name].checked;
+  // Clear urgent when unchecking
+  if (!buildSelected[name].checked) buildSelected[name].urgent = false;
   renderBuildItems();
 }
 
@@ -763,8 +765,22 @@ window.handleSave = async function() {
   if (!items.length) { showToast('⚠️ לא סימנת פריטים'); return; }
   lists[activeId] = { name: listName, items, updatedAt: Date.now() };
   await saveLists();
+  
   showToast('✅ נשמר!');
   goHome();
+
+  // Send WA if there are urgent items - after goHome so window.open works
+  const urgentItems = items.filter(i => i.urgent);
+  if (urgentItems.length > 0) {
+    const phone = localStorage.getItem('partner-phone') || '';
+    const urgentList = urgentItems.map(i => '🔴 ' + i.name + (i.qty && i.qty !== '1' ? ' (' + i.qty + ')' : '')).join('\n');
+    const appUrl = 'https://miri7112006-ux.github.io?list=' + activeId + '&urgent=1';
+    const text = '🚨 *' + listName + ' - דחוף!*\n\n' + urgentList + '\n\n👉 פתח לראות: ' + appUrl;
+    const waUrl = phone
+      ? 'https://wa.me/972' + phone.replace(/^0/, '').replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(text)
+      : 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(waUrl, '_blank');
+  }
 };
 
 // SHOP
@@ -1048,9 +1064,20 @@ window.sendShareWA = function() {
 function checkSharedList() {
   const params = new URLSearchParams(window.location.search);
   const listId = params.get('list');
+  const urgent = params.get('urgent');
   if (listId) {
     setTimeout(() => {
-      if (lists[listId]) openShop(listId);
+      if (lists[listId]) {
+        openShop(listId);
+        if (urgent === '1') {
+          setTimeout(() => {
+            shopSortUrgent = true;
+            const btn = document.getElementById('btn-urgent-sort');
+            if (btn) btn.classList.add('active');
+            renderShop();
+          }, 800);
+        }
+      }
     }, 500);
   }
 }
