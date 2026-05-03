@@ -776,10 +776,19 @@ window.handleSave = async function() {
     const urgentList = urgentItems.map(i => '🔴 ' + i.name + (i.qty && i.qty !== '1' ? ' (' + i.qty + ')' : '')).join('\n');
     const appUrl = 'https://miri7112006-ux.github.io?list=' + activeId + '&urgent=1';
     const text = '🚨 *' + listName + ' - דחוף!*\n\n' + urgentList + '\n\n👉 פתח לראות: ' + appUrl;
-    const waUrl = phone
-      ? 'https://wa.me/972' + phone.replace(/^0/, '').replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(text)
-      : 'https://wa.me/?text=' + encodeURIComponent(text);
-    window.open(waUrl, '_blank');
+    let waUrl;
+    if (phone && phone.startsWith('https://chat.whatsapp.com/')) {
+      // Group link - open group then user pastes message
+      waUrl = phone;
+      window.open(waUrl, '_blank');
+      setTimeout(() => { navigator.clipboard.writeText(text).catch(()=>{}); showToast('📋 ההודעה הועתקה — הדביקי בקבוצה'); }, 1000);
+    } else if (phone) {
+      waUrl = 'https://wa.me/972' + phone.replace(/^0/, '').replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(text);
+      window.open(waUrl, '_blank');
+    } else {
+      waUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
+      window.open(waUrl, '_blank');
+    }
   }
 };
 
@@ -911,6 +920,23 @@ function renderShop() {
     });
   });
 
+  // Qty +/- buttons in shop
+  body.querySelectorAll('.shop-qty-btn[data-idx]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const idx = parseInt(el.getAttribute('data-idx'));
+      const delta = parseInt(el.getAttribute('data-delta'));
+      const cur = parseFloat(lists[activeId].items[idx].qty) || 1;
+      const newQty = String(Math.max(1, cur + delta));
+      await patchListItem(activeId, idx, { qty: newQty });
+    });
+  });
+  body.querySelectorAll('.shop-qty-inp[data-idx]').forEach(el => {
+    el.addEventListener('change', async () => {
+      const idx = parseInt(el.getAttribute('data-idx'));
+      await patchListItem(activeId, idx, { qty: el.value || '1' });
+    });
+  });
+
   // WhatsApp per item
   body.querySelectorAll('.btn-wa-item[data-idx]').forEach(el => {
     el.addEventListener('click', () => {
@@ -918,10 +944,18 @@ function renderShop() {
       const item = lists[activeId].items[idx];
       const phone = localStorage.getItem('partner-phone') || '';
       const text = 'אין ' + item.name + ' (' + (item.qty||'1') + ') — מה לעשות? להביא משהו אחר?';
-      const url = phone
-        ? 'https://wa.me/972' + phone.replace(/^0/,'').replace(/\D/g,'') + '?text=' + encodeURIComponent(text)
-        : 'https://wa.me/?text=' + encodeURIComponent(text);
-      window.open(url, '_blank');
+      let url;
+      if (phone && phone.startsWith('https://chat.whatsapp.com/')) {
+        url = phone;
+        window.open(url, '_blank');
+        setTimeout(() => { navigator.clipboard.writeText(text).catch(()=>{}); showToast('📋 הועתק — הדביקי בקבוצה'); }, 1000);
+      } else if (phone) {
+        url = 'https://wa.me/972' + phone.replace(/^0/,'').replace(/[^0-9]/g,'') + '?text=' + encodeURIComponent(text);
+        window.open(url, '_blank');
+      } else {
+        url = 'https://wa.me/?text=' + encodeURIComponent(text);
+        window.open(url, '_blank');
+      }
     });
   });
 
